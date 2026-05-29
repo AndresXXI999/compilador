@@ -77,6 +77,28 @@ def generar_ensamblador(expr):
 
     return '\n'.join(instrucciones)
 
+def generar_tabla_simbolos(expr, tipo):
+    tabla = []
+    if tipo == 'matematica':
+        tokens = re.findall(r'\d+', expr)
+        for i, tok in enumerate(tokens):
+            tabla.append({
+                'identificador': f't{i+1}',
+                'tipo': 'int',
+                'valor': tok,
+                'direccion': f'0x{1000 + i*4:04x}'
+            })
+    elif tipo == 'cadena' or tipo == 'er':
+        tokens = re.findall(r'[a-zA-Z]+', expr)
+        for i, tok in enumerate(set(tokens)):
+            tabla.append({
+                'identificador': tok,
+                'tipo': 'char',
+                'valor': tok,
+                'direccion': f'0x{2000 + i*4:04x}'
+            })
+    return tabla
+
 @app.route('/analizar', methods=['POST'])
 def analizar():
     data = request.json
@@ -91,6 +113,7 @@ def analizar():
     if tipo == 'ofensa':
         fases.append({'fase': 'Lexico', 'resultado': 'Token OFENSA detectado'})
         fases.append({'fase': 'Respuesta', 'resultado': 'Por favor ingresa una entrada valida.'})
+        tabla = generar_tabla_simbolos(input_text, tipo)
 
     elif tipo == 'matematica':
         salida, _ = correr('expr', input_text)
@@ -101,29 +124,34 @@ def analizar():
         fases.append({'fase': 'Intermedio', 'resultado': f't1 = {input_text}'})
         fases.append({'fase': 'Ensamblador', 'resultado': generar_ensamblador(input_text)})
         fases.append({'fase': 'Resultado', 'resultado': resultado})
+        tabla = generar_tabla_simbolos(input_text, tipo)
 
     elif tipo == 'er':
         salida, _ = correr('grupo', input_text)
         fases.append({'fase': 'Lexico', 'resultado': salida})
         fases.append({'fase': 'Sintactico', 'resultado': 'Expresion Regular valida'})
         fases.append({'fase': 'AFD', 'resultado': construir_afd(input_text)})
+        tabla = generar_tabla_simbolos(input_text, tipo)
 
     elif tipo == 'gramatica':
         salida, _ = correr('grupo', input_text)
         fases.append({'fase': 'Lexico', 'resultado': salida})
         fases.append({'fase': 'Sintactico', 'resultado': 'Gramatica identificada'})
         fases.append({'fase': 'Producciones', 'resultado': input_text})
+        tabla = generar_tabla_simbolos(input_text, tipo)
 
     else:  # cadena
         salida, _ = correr('grupo', input_text)
         fases.append({'fase': 'Lexico', 'resultado': salida})
         fases.append({'fase': 'Sintactico', 'resultado': 'Cadena valida'})
         fases.append({'fase': 'Semantico', 'resultado': 'Tipo: cadena'})
+        tabla = generar_tabla_simbolos(input_text, tipo)
 
     return jsonify({
         'input': input_text,
         'tipo': tipo,
-        'fases': fases
+        'fases': fases,
+        'tabla_simbolos': tabla
     })
 
 if __name__ == '__main__':

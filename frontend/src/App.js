@@ -52,6 +52,32 @@ function App() {
               <pre>{fase.resultado}</pre>
             </div>
           ))}
+
+	{resultado.tabla_simbolos && resultado.tabla_simbolos.length > 0 && (
+  	<div className="fase">
+    	<h3>Tabla de Símbolos</h3>
+    	<table style={{width:'100%', borderCollapse:'collapse'}}>
+      	<thead>
+        	<tr>
+          	{['Identificador','Tipo','Valor','Dirección'].map(h => (
+            	<th key={h} style={{textAlign:'left', borderBottom:'1px solid #333', padding:'4px 8px', color:'#00ff99'}}>{h}</th>
+          	))}
+        	</tr>
+      	</thead>
+      	<tbody>
+        	{resultado.tabla_simbolos.map((s, i) => (
+          	<tr key={i}>
+            	<td style={{padding:'4px 8px'}}>{s.identificador}</td>
+            	<td style={{padding:'4px 8px'}}>{s.tipo}</td>
+            	<td style={{padding:'4px 8px'}}>{s.valor}</td>
+            	<td style={{padding:'4px 8px'}}>{s.direccion}</td>
+          	</tr>
+        	))}
+      	</tbody>
+    	</table>
+  	</div>
+	)}
+
           {resultado.error && (
             <div className="error">{resultado.error}</div>
           )}
