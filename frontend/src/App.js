@@ -46,6 +46,13 @@ function App() {
           <div className="tipo">
             Tipo detectado: <span>{resultado.tipo}</span>
           </div>
+
+		{resultado.turing && (
+  			<div className="turing">
+    			<span>⟩ </span>{resultado.turing}
+  			</div>
+		)}
+
           {resultado.fases && resultado.fases.map((fase, i) => (
             <div key={i} className="fase">
               <h3>{fase.fase}</h3>

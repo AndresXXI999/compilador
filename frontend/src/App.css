@@ -96,3 +96,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   border-left: 3px solid #ff4444;
   border-radius: 0 4px 4px 0;
 }
+
+.turing {
+  color: #00ff99;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+  border-left: 3px solid #00ff99;
+  padding: 0.5rem 1rem;
+  background: #111;
+}
