@@ -73,6 +73,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "nodo.h"
+extern int er_contador;
 
 void yyerror(const char *s);
 int  yylex(void);
@@ -84,7 +85,7 @@ void identificar_grupos(const char *input);
 void prefijo(Nodo *n);
 void sufijo(Nodo *n);
 
-#line 88 "parser.tab.c"
+#line 89 "parser.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -523,8 +524,8 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    49,    49,    58,    59,    60,    64,    65,    66,    70,
-      71,    73
+       0,    50,    50,    60,    61,    62,    66,    67,    68,    72,
+      73,    75
 };
 #endif
 
@@ -1090,73 +1091,74 @@ yyreduce:
   switch (yyn)
     {
   case 2: /* programa: expr  */
-#line 49 "parser.y"
+#line 50 "parser.y"
           {
         printf("\nArbol:\n");
-        imprimir_arbol((yyvsp[0].nodo), 0);
-        printf("\nPrefijo  : "); prefijo((yyvsp[0].nodo)); printf("\n");
+        er_contador = 0;
+	imprimir_arbol((yyvsp[0].nodo), 0);
+	printf("\nPrefijo  : "); prefijo((yyvsp[0].nodo)); printf("\n");
         printf("Sufijo   : "); sufijo((yyvsp[0].nodo));  printf("\n");
     }
-#line 1101 "parser.tab.c"
+#line 1103 "parser.tab.c"
     break;
 
   case 3: /* expr: expr MAS term  */
-#line 58 "parser.y"
+#line 60 "parser.y"
                      { (yyval.nodo) = nuevo_nodo("+", (yyvsp[-2].nodo), (yyvsp[0].nodo)); }
-#line 1107 "parser.tab.c"
+#line 1109 "parser.tab.c"
     break;
 
   case 4: /* expr: expr MENOS term  */
-#line 59 "parser.y"
+#line 61 "parser.y"
                      { (yyval.nodo) = nuevo_nodo("-", (yyvsp[-2].nodo), (yyvsp[0].nodo)); }
-#line 1113 "parser.tab.c"
+#line 1115 "parser.tab.c"
     break;
 
   case 5: /* expr: term  */
-#line 60 "parser.y"
+#line 62 "parser.y"
                      { (yyval.nodo) = (yyvsp[0].nodo); }
-#line 1119 "parser.tab.c"
+#line 1121 "parser.tab.c"
     break;
 
   case 6: /* term: term POR factor  */
-#line 64 "parser.y"
+#line 66 "parser.y"
                      { (yyval.nodo) = nuevo_nodo("*", (yyvsp[-2].nodo), (yyvsp[0].nodo)); }
-#line 1125 "parser.tab.c"
+#line 1127 "parser.tab.c"
     break;
 
   case 7: /* term: term DIV factor  */
-#line 65 "parser.y"
+#line 67 "parser.y"
                      { (yyval.nodo) = nuevo_nodo("/", (yyvsp[-2].nodo), (yyvsp[0].nodo)); }
-#line 1131 "parser.tab.c"
+#line 1133 "parser.tab.c"
     break;
 
   case 8: /* term: factor  */
-#line 66 "parser.y"
+#line 68 "parser.y"
                      { (yyval.nodo) = (yyvsp[0].nodo); }
-#line 1137 "parser.tab.c"
+#line 1139 "parser.tab.c"
     break;
 
   case 9: /* factor: LPAREN expr RPAREN  */
-#line 70 "parser.y"
+#line 72 "parser.y"
                         { (yyval.nodo) = (yyvsp[-1].nodo); }
-#line 1143 "parser.tab.c"
+#line 1145 "parser.tab.c"
     break;
 
   case 10: /* factor: NUM  */
-#line 71 "parser.y"
+#line 73 "parser.y"
                         { char buf[32]; sprintf(buf, "%d", (yyvsp[0].num));
                           (yyval.nodo) = nuevo_nodo(buf, NULL, NULL); }
-#line 1150 "parser.tab.c"
+#line 1152 "parser.tab.c"
     break;
 
   case 11: /* factor: VAR  */
-#line 73 "parser.y"
+#line 75 "parser.y"
                         { (yyval.nodo) = nuevo_nodo((yyvsp[0].texto), NULL, NULL); }
-#line 1156 "parser.tab.c"
+#line 1158 "parser.tab.c"
     break;
 
 
-#line 1160 "parser.tab.c"
+#line 1162 "parser.tab.c"
 
       default: break;
     }
@@ -1349,7 +1351,7 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 76 "parser.y"
+#line 78 "parser.y"
 
 
 Nodo *nuevo_nodo(const char *val, Nodo *izq, Nodo *der) {
@@ -1361,10 +1363,19 @@ Nodo *nuevo_nodo(const char *val, Nodo *izq, Nodo *der) {
     return n;
 }
 
+int er_contador = 0;
+
 void imprimir_arbol(Nodo *n, int nivel) {
     if (n == NULL) return;
     for (int i = 0; i < nivel; i++) printf("  ");
-    printf("%s\n", n->valor);
+    if (n->izq != NULL || n->der != NULL) {
+        er_contador++;
+        printf("er%d\n", er_contador);
+        for (int i = 0; i < nivel + 1; i++) printf("  ");
+        printf("%s\n", n->valor);
+    } else {
+        printf("%s\n", n->valor);
+    }
     imprimir_arbol(n->izq, nivel + 1);
     imprimir_arbol(n->der, nivel + 1);
 }

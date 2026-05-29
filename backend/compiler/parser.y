@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "nodo.h"
+extern int er_contador;
 
 void yyerror(const char *s);
 int  yylex(void);
@@ -48,8 +49,9 @@ void sufijo(Nodo *n);
 programa:
     expr  {
         printf("\nArbol:\n");
-        imprimir_arbol($1, 0);
-        printf("\nPrefijo  : "); prefijo($1); printf("\n");
+        er_contador = 0;
+	imprimir_arbol($1, 0);
+	printf("\nPrefijo  : "); prefijo($1); printf("\n");
         printf("Sufijo   : "); sufijo($1);  printf("\n");
     }
 ;
@@ -84,10 +86,19 @@ Nodo *nuevo_nodo(const char *val, Nodo *izq, Nodo *der) {
     return n;
 }
 
+int er_contador = 0;
+
 void imprimir_arbol(Nodo *n, int nivel) {
     if (n == NULL) return;
     for (int i = 0; i < nivel; i++) printf("  ");
-    printf("%s\n", n->valor);
+    if (n->izq != NULL || n->der != NULL) {
+        er_contador++;
+        printf("er%d\n", er_contador);
+        for (int i = 0; i < nivel + 1; i++) printf("  ");
+        printf("%s\n", n->valor);
+    } else {
+        printf("%s\n", n->valor);
+    }
     imprimir_arbol(n->izq, nivel + 1);
     imprimir_arbol(n->der, nivel + 1);
 }
