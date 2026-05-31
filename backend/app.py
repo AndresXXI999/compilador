@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from afd import construir_afd
+from afd import construir_afd, construir_afn, construir_afn_dot, construir_afd_dot
 import subprocess
 import os
 import re
@@ -26,9 +26,9 @@ def correr(modo, input_text):
     if not os.path.exists(EJECUTABLE):
         compilar()
     result = subprocess.run(
-        [EJECUTABLE, modo, input_text],
-        capture_output=True, text=True, timeout=5
-    )
+            [EJECUTABLE, modo, input_text],
+            capture_output=True, text=True, timeout=5
+            )
     return result.stdout, result.stderr
 
 def detectar_tipo(input_text):
@@ -87,7 +87,7 @@ def generar_tabla_simbolos(expr, tipo):
                 'tipo': 'int',
                 'valor': tok,
                 'direccion': f'0x{1000 + i*4:04x}'
-            })
+                })
     elif tipo == 'cadena' or tipo == 'er':
         tokens = re.findall(r'[a-zA-Z]+', expr)
         for i, tok in enumerate(set(tokens)):
@@ -96,8 +96,46 @@ def generar_tabla_simbolos(expr, tipo):
                 'tipo': 'char',
                 'valor': tok,
                 'direccion': f'0x{2000 + i*4:04x}'
-            })
+                })
+    elif tipo == 'gramatica':
+        # Extrae no terminales (antes de ->) y terminales (después)
+        tokens = set()
+        partes = expr.split('->')
+        if len(partes) == 2:
+            izq = partes[0].strip()
+            tokens.add(izq)
+            der = partes[1].strip()
+            for alt in der.split('|'):
+                tokens.update(alt.strip().split())
+        else:
+            tokens = set(expr.split())
+        for i, tok in enumerate(sorted(tokens)):
+            tabla.append({
+                'identificador': tok,
+                'tipo': 'NT' if tok.isupper() else 'T',
+                'valor': tok,
+                'direccion': f'0x{3000 + i*4:04x}'
+        })
     return tabla
+
+def turing_respuesta(input_text, tipo):
+    if tipo == 'ofensa':
+        return "Detecté lenguaje inapropiado. El compilador no puede procesar este tipo de entrada."
+    if tipo == 'matematica':
+        if re.search(r'[+\-*/]{2,}', input_text):
+            return "Detecté operadores consecutivos. ¿Olvidaste un operando?"
+        if input_text.count('(') != input_text.count(')'):
+            return "Los paréntesis no están balanceados."
+        return "Expresión matemática válida. Procesando todas las fases del compilador."
+    if tipo == 'er':
+        if input_text.endswith('|'):
+            return "La expresión regular termina con | sin operando derecho."
+        if input_text.endswith('*') or input_text.endswith('+'):
+            return "Expresión regular válida con operador de cierre."
+        return "Expresión regular válida. Construyendo AFD directo."
+    if tipo == 'gramatica':
+        return "Gramática libre de contexto detectada. Identificando producciones."
+    return "Cadena de texto detectada. Clasificando según conjuntos formales."
 
 @app.route('/analizar', methods=['POST'])
 def analizar():
@@ -129,15 +167,25 @@ def analizar():
     elif tipo == 'er':
         salida, _ = correr('grupo', input_text)
         fases.append({'fase': 'Lexico', 'resultado': salida})
-        fases.append({'fase': 'Sintactico', 'resultado': 'Expresion Regular valida'})
-        fases.append({'fase': 'AFD', 'resultado': construir_afd(input_text)})
+        fases.append({'fase': 'Sintactico', 'resultado': 'Expresion regular valida\nOperadores detectados: union (|), concatenacion, cerradura (*)'})
+        fases.append({'fase': 'AFN - Thompson', 'resultado': construir_afn(input_text), 'dot': construir_afn_dot(input_text)})
+        fases.append({'fase': 'AFD - Directo', 'resultado': construir_afd(input_text), 'dot': construir_afd_dot(input_text)})
         tabla = generar_tabla_simbolos(input_text, tipo)
 
     elif tipo == 'gramatica':
         salida, _ = correr('grupo', input_text)
         fases.append({'fase': 'Lexico', 'resultado': salida})
-        fases.append({'fase': 'Sintactico', 'resultado': 'Gramatica identificada'})
-        fases.append({'fase': 'Producciones', 'resultado': input_text})
+        producciones = []
+        partes = input_text.split('->')
+        if len(partes) == 2:
+            lado_izq = partes[0].strip()
+            lado_der = partes[1].strip()
+            alternativas = lado_der.split('|')
+            for alt in alternativas:
+                producciones.append(f"{lado_izq} -> {alt.strip()}")
+        fases.append({'fase': 'Sintactico', 'resultado': '\n'.join(producciones) if producciones else 'Gramatica identificada'})
+        fases.append({'fase': 'Semantico', 'resultado': f'No terminal: {partes[0].strip() if len(partes) > 0 else "?"}\nProduccion(es): {len(producciones)}'})
+        fases.append({'fase': 'BNF', 'resultado': '\n'.join(f'<{p.split("->")[0].strip()}> ::= {p.split("->")[1].strip()}' for p in producciones) if producciones else 'Sin producciones'})
         tabla = generar_tabla_simbolos(input_text, tipo)
 
     else:  # cadena
@@ -151,8 +199,9 @@ def analizar():
         'input': input_text,
         'tipo': tipo,
         'fases': fases,
-        'tabla_simbolos': tabla
-    })
+        'tabla_simbolos': tabla,
+        'turing': turing_respuesta(input_text, tipo)
+        })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

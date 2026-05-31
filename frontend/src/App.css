@@ -105,3 +105,17 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   padding: 0.5rem 1rem;
   background: #111;
 }
+
+.info-bar {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: #555;
+  font-size: 0.75rem;
+  margin-bottom: 2rem;
+  padding: 0.5rem;
+  border: 1px solid #222;
+  border-radius: 4px;
+}
+
+.info-bar span { color: #555; }
