@@ -403,5 +403,14 @@ def construir_afd_dot(er):
     for estado, movs in transiciones.items():
         for sym, sig in movs.items():
             lines.append(f'  {nombres[estado]} -> {nombres[sig]} [label="{sym}"];')
+    tiene_muerto = any(simbolo not in transiciones.get(estado, {}) for estado in estados for simbolo in alfabeto)
+    if tiene_muerto:
+        lines.append("  qm [shape=circle label=\"qm\"];") 
+        for estado in estados:
+            for simbolo in alfabeto:
+                if simbolo not in transiciones.get(estado, {}):
+                    lines.append(f"  {nombres[estado]} -> qm [label=\"{simbolo}\"];")
+        for simbolo in alfabeto:
+            lines.append(f"  qm -> qm [label=\"{simbolo}\"];")
     lines.append('}')
     return '\n'.join(lines)
