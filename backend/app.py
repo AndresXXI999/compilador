@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from afd import construir_afd, construir_afn, construir_afn_dot, construir_afd_dot
+from afd import construir_afd, construir_afn, construir_afn_dot, construir_afd_dot, arbol_er_dot
 import subprocess
 import os
 import re
@@ -17,6 +17,10 @@ def cargar_ofensas():
         return [linea.strip().lower() for linea in f if linea.strip()]
 
 OFENSAS = cargar_ofensas()
+PALABRAS = set()
+if os.path.exists(os.path.join(COMPILER_DIR, "palabras.txt")):
+    with open(os.path.join(COMPILER_DIR, "palabras.txt"), "r") as f:
+        PALABRAS = set(l.strip().lower() for l in f if l.strip())
 
 def compilar():
     result = subprocess.run(['make'], cwd=COMPILER_DIR, capture_output=True, text=True)
@@ -42,6 +46,11 @@ def detectar_tipo(input_text):
         return 'matematica'
     if re.search(r'[|*]', input_text) and not re.search(r'\d', input_text):
         return 'er'
+    if input_text.isalpha() and len(input_text) > 2:
+        if texto in PALABRAS:
+            return 'cadena'
+        else:
+            return 'er'
     return 'cadena'
 
 def evaluar_matematica(expr):
@@ -50,6 +59,53 @@ def evaluar_matematica(expr):
         return str(resultado)
     except:
         return 'Error en expresion'
+
+def arbol_texto_a_dot(texto):
+    lineas = []
+    in_tree = False
+    for linea in texto.split('\n'):
+        if 'Arbol:' in linea:
+            in_tree = True
+            continue
+        if in_tree:
+            if linea.strip().startswith('Prefijo') or linea.strip().startswith('Sufijo'):
+                break
+            if linea.strip():
+                lineas.append(linea)
+    if not lineas:
+        return None
+    items = []
+    for linea in lineas:
+        nivel = (len(linea) - len(linea.lstrip())) // 2
+        items.append((nivel, linea.strip()))
+    merged = []
+    i = 0
+    while i < len(items):
+        nivel, valor = items[i]
+        if valor.startswith('er') and i + 1 < len(items):
+            _, op = items[i + 1]
+            merged.append((nivel, valor + "\\n" + op, True))
+            i += 2
+        else:
+            merged.append((nivel, valor, False))
+            i += 1
+    dot_lines = ['digraph {', '  rankdir=TB;', '  node [fontname="Courier" fontsize=14];']
+    edges = []
+    nid = [0]
+    stack = []
+    for nivel, valor, interno in merged:
+        nid[0] += 1
+        curr = nid[0]
+        shape = 'ellipse' if interno else 'box'
+        dot_lines.append(f'  n{curr} [label="{valor}" shape={shape}];')
+        while stack and stack[-1][0] >= nivel:
+            stack.pop()
+        if stack:
+            edges.append(f'  n{stack[-1][1]} -> n{curr};')
+        stack.append((nivel, curr))
+    dot_lines.extend(edges)
+    dot_lines.append('}')
+    return '\n'.join(dot_lines)
 
 def generar_ensamblador(expr):
     # tokenizar la expresion
@@ -135,7 +191,9 @@ def turing_respuesta(input_text, tipo):
         return "Expresión regular válida. Construyendo AFD directo."
     if tipo == 'gramatica':
         return "Gramática libre de contexto detectada. Identificando producciones."
-    return "Cadena de texto detectada. Clasificando según conjuntos formales."
+    if re.fullmatch(r"[a-zA-Z]+", input_text.strip()):
+        return "Cadena de solo letras. Podria ser una expresion regular simple. Si es una ER, añade operadores."
+    return "Cadena de texto detectada. Clasificando segun conjuntos formales."
 
 @app.route('/analizar', methods=['POST'])
 def analizar():
@@ -157,7 +215,8 @@ def analizar():
         salida, _ = correr('expr', input_text)
         resultado = evaluar_matematica(input_text)
         fases.append({'fase': 'Lexico', 'resultado': correr('grupo', input_text)[0]})
-        fases.append({'fase': 'Sintactico', 'resultado': salida})
+        arbol_dot = arbol_texto_a_dot(salida)
+        fases.append({'fase': 'Sintactico', 'resultado': salida, 'dot': arbol_dot})
         fases.append({'fase': 'Semantico', 'resultado': 'Tipos compatibles: numero op numero'})
         fases.append({'fase': 'Intermedio', 'resultado': f't1 = {input_text}'})
         fases.append({'fase': 'Ensamblador', 'resultado': generar_ensamblador(input_text)})
@@ -168,6 +227,7 @@ def analizar():
         salida, _ = correr('grupo', input_text)
         fases.append({'fase': 'Lexico', 'resultado': salida})
         fases.append({'fase': 'Sintactico', 'resultado': 'Expresion regular valida\nOperadores detectados: union (|), concatenacion, cerradura (*)'})
+        fases.append({'fase': 'Arbol Aumentado (ER + #)', 'resultado': 'Arbol de la expresion regular aumentada', 'dot': arbol_er_dot(input_text)})
         fases.append({'fase': 'AFN - Thompson', 'resultado': construir_afn(input_text), 'dot': construir_afn_dot(input_text)})
         fases.append({'fase': 'AFD - Directo', 'resultado': construir_afd(input_text), 'dot': construir_afd_dot(input_text)})
         tabla = generar_tabla_simbolos(input_text, tipo)
