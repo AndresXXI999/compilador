@@ -4,6 +4,7 @@ import "./App.css";
 function GraficaAuto({ dot }) {
   const ref = useRef();
   useEffect(() => {
+    if (!dot) { if (ref.current) ref.current.textContent = ""; return; }
     import("@viz-js/viz").then(({ instance }) => {
       instance().then(viz => {
         try {
@@ -15,32 +16,34 @@ function GraficaAuto({ dot }) {
           if (ref.current) { ref.current.innerHTML = ""; ref.current.appendChild(svg); }
         } catch(e) { if (ref.current) ref.current.textContent = "Error al renderizar"; }
       });
-    });
+    }).catch(() => { if (ref.current) ref.current.textContent = ""; });
   }, [dot]);
   return <div ref={ref} style={{overflowX:"auto", marginTop:"0.5rem"}} />;
 }
 
 function App() {
+	const API_URL = process.env.REACT_APP_API_URL || "http://127.0.0.1:5000";
 	const [input, setInput] = useState("");
 	const [resultado, setResultado] = useState(null);
 	const [cargando, setCargando] = useState(false);
 
-	const analizar = async () => {
-		if (!input.trim()) return;
-		setCargando(true);
-		try {
-			const res = await fetch("http://127.0.0.1:5000/analizar", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ input }),
-			});
-			const data = await res.json();
-			setResultado(data);
-		} catch (e) {
-			setResultado({ error: "No se pudo conectar al servidor" });
-		}
-		setCargando(false);
-	};
+		    const analizar = async () => {
+    if (!input.trim()) return;
+    setCargando(true);
+    try {
+      const res = await fetch(`${API_URL}/analizar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setResultado(data);
+    } catch (e) {
+      setResultado({ error: "No se pudo conectar al servidor" });
+    }
+    setCargando(false);
+  };
 
 	return (
 		<div className="app">

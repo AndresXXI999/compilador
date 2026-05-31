@@ -184,6 +184,8 @@ def turing_respuesta(input_text, tipo):
             return "Los paréntesis no están balanceados."
         return "Expresión matemática válida. Procesando todas las fases del compilador."
     if tipo == 'er':
+
+
         if input_text.endswith('|'):
             return "La expresión regular termina con | sin operando derecho."
         if input_text.endswith('*') or input_text.endswith('+'):
@@ -224,6 +226,7 @@ def analizar():
         tabla = generar_tabla_simbolos(input_text, tipo)
 
     elif tipo == 'er':
+
         salida, _ = correr('grupo', input_text)
         fases.append({'fase': 'Lexico', 'resultado': salida})
         fases.append({'fase': 'Sintactico', 'resultado': 'Expresion regular valida\nOperadores detectados: union (|), concatenacion, cerradura (*)'})
@@ -264,4 +267,4 @@ def analizar():
         })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

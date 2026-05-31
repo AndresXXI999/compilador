@@ -99,8 +99,7 @@ def parsear(er):
             consumir()
             return Nodo('hoja', valor=c)
 
-    arbol = expr()
-    return Nodo('concat', izq=arbol, der=Nodo('hoja', valor='#'))
+    return expr()
 
 def construir_afd(er):
     # resetear
@@ -247,7 +246,7 @@ def construir_afn(er):
 
     def term():
         nfa = factor()
-        while peek() and peek() not in ')|#':
+        while peek() and peek() not in ')|':
             nfa = nfa_concat(nfa, factor())
         return nfa
 
@@ -334,7 +333,7 @@ def construir_afn_dot(er):
         return nfa
     def term():
         nfa = factor()
-        while peek() and peek() not in ')|#': nfa = nfa_concat(nfa, factor())
+        while peek() and peek() not in ')|': nfa = nfa_concat(nfa, factor())
         return nfa
     def factor():
         nfa = base()
@@ -416,9 +415,9 @@ def construir_afd_dot(er):
     lines.append('}')
     return '\n'.join(lines)
 
+
 def arbol_er_dot(er):
-    arbol = parsear(er)  # parsear ya agrega #
-    calcular(arbol)       # asigna posiciones a las hojas
+    arbol = parsear(er)
     dot_lines = ['digraph {', '  rankdir=TB;', '  node [fontname="Courier" fontsize=14];']
     edges = []
     nid = [0]
@@ -429,22 +428,24 @@ def arbol_er_dot(er):
         nid[0] += 1
         curr = nid[0]
         if nodo.tipo == 'hoja':
-            etiqueta = f"{nodo.pos}:{nodo.valor}"
-            dot_lines.append(f'  n{curr} [label="{etiqueta}" shape=box];')
+            dot_lines.append(f'  n{curr} [label="{nodo.valor}" shape=box];')
             return curr
         else:
             er_count[0] += 1
             simbolo = {'concat': '.', 'union': '|', 'estrella': '*'}.get(nodo.tipo, nodo.tipo)
-            dot_lines.append(f'  n{curr} [label="er{er_count[0]}  ({simbolo})" shape=ellipse];')
+            dot_lines.append(f'  n{curr} [label="er{er_count[0]}" shape=ellipse];')
+            nid[0] += 1
+            op_id = nid[0]
+            dot_lines.append(f'  n{op_id} [label="{simbolo}" shape=box];')
+            edges.append(f'  n{curr} -> n{op_id};')
             id_izq = visitar(nodo.izq)
             if id_izq is not None:
-                edges.append(f'  n{curr} -> n{id_izq};')
+                edges.append(f'  n{curr} -> n{id_izq} [minlen=2];')
             id_der = visitar(nodo.der)
             if id_der is not None:
-                edges.append(f'  n{curr} -> n{id_der};')
+                edges.append(f'  n{curr} -> n{id_der} [minlen=2];')
             return curr
     visitar(arbol)
     dot_lines.extend(edges)
     dot_lines.append('}')
     return '\n'.join(dot_lines)
-
