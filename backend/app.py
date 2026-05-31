@@ -1,4 +1,6 @@
 from flask import Flask, request, jsonify
+# Proyecto desarrollado por lezdoit
+# Proyecto desarrollado por lezdoit
 from flask_cors import CORS
 from afd import construir_afd, construir_afn, construir_afn_dot, construir_afd_dot, arbol_er_dot
 import subprocess
